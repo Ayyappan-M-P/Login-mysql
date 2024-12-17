@@ -1,1 +1,1 @@
-export const backendURL = "https://login-mysql-0fu4.onrender.com"
+export const backendURL = "https://sweet-sunshine-972d96.netlify.app/"
