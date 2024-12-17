@@ -9,16 +9,22 @@ app.use(bodyParser.json());
 
 // MySQL Connection
 const db = mysql.createConnection({
-  host: "localhost",
-  user: "root", // Replace with your MySQL username
-  password: "123456", // Replace with your MySQL password
-  database: "EmployeeManagement",
+  host: process.env.DB_HOST || "localhost",
+  user: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "123456",
+  database: process.env.DB_NAME || "EmployeeManagement",
+  port: process.env.DB_PORT || 3306,
 });
 
+
 db.connect((err) => {
-  if (err) throw err;
-  console.log("Connected to MySQL Database");
+  if (err) {
+    console.error("Error connecting to the database:", err);
+  } else {
+    console.log("Connected to MySQL Database");
+  }
 });
+
 
 // Add Employee Endpoint
 app.post("/add-employee", (req, res) => {
