@@ -1,6 +1,6 @@
 FROM node:20
 
-WORKDIR /fsd/be
+WORKDIR /practice/backend
 
 COPY package*.json ./
 
