@@ -1,5 +1,5 @@
 const express = require("express");
-
+const mysql = require("mysql2");
 const bodyParser = require("body-parser");
 const cors = require("cors");
 
@@ -7,116 +7,56 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const db = require("./db/db");
-
-
-
-app.get("/get-employees", (req, res) => {
-    const sql = "SELECT * FROM employees";
-    
-    db.query(sql, (err, results) => {
-        if (err) {
-            return res.status(500).json({ 
-                error: "Error fetching employees",
-                details: err.message 
-            });
-        }
-
-        res.status(200).json(results);
-    });
+// MySQL Connection
+const db = mysql.createConnection({
+  host: "localhost",
+  user: "root", // Replace with your MySQL username
+  password: "123456", // Replace with your MySQL password
+  database: "EmployeeManagement",
 });
 
+db.connect((err) => {
+  if (err) throw err;
+  console.log("Connected to MySQL Database");
+});
+
+// Add Employee Endpoint
 app.post("/add-employee", (req, res) => {
-    const { name, employee_id, email, phone_number, department, date_of_joining, role } = req.body;
+  const { name, employeeId, email, phoneNumber, department, dateOfJoining, role } = req.body;
 
-    // Detailed input validation
-    if (!name || !employee_id || !email || !phone_number || !department || !date_of_joining || !role) {
-        return res.status(400).json({ error: "All fields are required" });
+  // Validate required fields
+  if (!name || !employeeId || !email || !phoneNumber || !department || !dateOfJoining || !role) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  const sql = `
+    INSERT INTO Employees (name, employee_id, email, phone_number, department, date_of_joining, role)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `;
+  const values = [name, employeeId, email, phoneNumber, department, dateOfJoining, role];
+
+  db.query(sql, values, (err, result) => {
+    if (err) {
+      if (err.code === "ER_DUP_ENTRY") {
+        return res.status(400).json({ error: "Employee ID or Email already exists" });
+      }
+      return res.status(500).json({ error: "Database error" });
     }
-
-    const sql = "INSERT INTO employees (name, employee_id, email, phone_number, department, date_of_joining, role) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    
-    db.query(sql, [name, employee_id, email, phone_number, department, date_of_joining, role], (err, result) => {
-        if (err) {
-            console.error('Full database error:', err);
-            console.error('Error code:', err.code);
-            console.error('SQL Error:', err.sqlMessage);
-            console.error('SQL State:', err.sqlState);
-
-            return res.status(500).json({ 
-                error: "Database insertion failed",
-                errorCode: err.code,
-                details: err.sqlMessage 
-            });
-        }
-
-        res.status(201).json({ 
-            message: "Employee added successfully",
-            employeeId: employee_id 
-        });
-    });
+    res.json({ message: "Employee added successfully", employeeId: result.insertId });
+  });
 });
 
-app.put("/update-employee/:employee_id", (req, res) => {
-    const { employee_id } = req.params;
-    const { name, email, phone_number, department, date_of_joining, role } = req.body;
-
-    const sql = `
-        UPDATE employees 
-        SET name = ?, email = ?, phone_number = ?, department = ?, date_of_joining = ?, role = ?
-        WHERE employee_id = ?
-    `;
-
-    const formattedDate = new Date(date_of_joining).toISOString().split('T')[0];
-
-    db.query(
-        sql, 
-        [name, email, phone_number, department, formattedDate, role, employee_id], 
-        (err, result) => {
-            if (err) {
-                return res.status(500).json({ 
-                    error: "Error updating employee",
-                    details: err.message 
-                });
-            }
-
-            if (result.affectedRows === 0) {
-                return res.status(404).json({ error: "Employee not found" });
-            }
-
-            res.status(200).json({ 
-                message: "Employee updated successfully",
-                employeeId: employee_id 
-            });
-        }
-    );
+// Get Employees Endpoint (Optional)
+app.get("/employees", (req, res) => {
+  const sql = "SELECT * FROM Employees";
+  db.query(sql, (err, results) => {
+    if (err) return res.status(500).json({ error: "Database error" });
+    res.json(results);
+  });
 });
 
-app.delete("/delete-employee/:employee_id", (req, res) => {
-    const { employee_id } = req.params;
-
-    const sql = "DELETE FROM employees WHERE employee_id = ?";
-
-    db.query(sql, [employee_id], (err, result) => {
-        if (err) {
-            return res.status(500).json({ 
-                error: "Error deleting employee",
-                details: err.message 
-            });
-        }
-
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: "Employee not found" });
-        }
-
-        res.status(200).json({ 
-            message: "Employee deleted successfully",
-            employeeId: employee_id 
-        });
-    });
-});
-
-
-app.listen(5000, () => {
-    console.log("Server started on port 5000");
+// Start the Server
+const PORT = 5000;
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT}`);
 });
